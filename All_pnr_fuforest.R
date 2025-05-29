@@ -26,34 +26,42 @@ plot(c)
 
 s_time <-Sys.time()
 s_time
-# Function to process each projected PNR tile
-process_pnr_tile <- function(tile_path) {
+# Function to process and save each tile as RData
+process_and_save_tile <- function(tile_path, output_dir = "processed_pnr_tiles") {
+  if (!dir.exists(output_dir)) dir.create(output_dir)
+  
   cat("Processing:", basename(tile_path), "\n")
   
-  # Load projected tile
   tile <- rast(tile_path)
-  
-  # Convert to dataframe, keep only PNR=1 cells
-  tile_df <- tile %>%
+  pnr_points <- tile %>%  # Give it a meaningful name
     as.data.frame(xy = TRUE) %>%
-    filter(.[[3]] == 1) %>%  # Keep only regenerable cells
-    select(x, y)  # Just coordinates for now
+    filter(.[[3]] == 1) %>%
+    select(x, y)
   
-  cat("  PNR cells found:", nrow(tile_df), "\n")
-  return(tile_df)
+  # Save as RData
+  tile_name <- tools::file_path_sans_ext(basename(tile_path))
+  output_file <- file.path(output_dir, paste0(tile_name, "_pnr_points.RData"))
+  save(pnr_points, file = output_file)
+  
+  cat("  PNR cells:", nrow(pnr_points), "- saved to:", output_file, "\n")
+  return(pnr_points)
 }
 
-# Get list of all projected tiles
-projected_tiles <- list.files("Data/mo_bi_pnr", pattern = "*.tif$", full.names = TRUE)
+# Later combine all RData files
+rdata_files <- list.files("processed_pnr_tiles", pattern = "*.RData$", full.names = TRUE)
+pnr_combined_df <- rdata_files %>%
+  map_dfr(~{
+    load(.x)  # Loads object named 'pnr_points'
+    return(pnr_points)
+  })
 
-# Process first tile as test
-test_tile_df <- process_pnr_tile(projected_tiles[1])
-head(test_tile_df)
+# Save combined version
+save(pnr_combined_df, file = "pnr_all_combined.RData")
 
 
 e_time <- Sys.time()
 total_time <- e_time - s_time
-totoal_time
+total_time
 
 # If it works well, process all tiles
 # all_pnr_dfs <- lapply(projected_tiles, process_pnr_tile)
