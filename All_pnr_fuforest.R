@@ -11,6 +11,7 @@ print(head(pnr_df_updated))
 # Convert all 30m pnr to dataframe first
 library(terra)
 library(dplyr)
+library(purrr)
 
 a <- rast("Data/pnr_30m/pnv_pct_30m_tile_0_10_-5_5.tif")
 print(a)
@@ -47,22 +48,56 @@ process_and_save_tile <- function(tile_path, output_dir = "processed_pnr_tiles")
   return(pnr_points)
 }
 
-# Later combine all RData files
-rdata_files <- list.files("processed_pnr_tiles", pattern = "*.RData$", full.names = TRUE)
-pnr_combined_df <- rdata_files %>%
-  map_dfr(~{
-    load(.x)  # Loads object named 'pnr_points'
-    return(pnr_points)
-  })
+projected_tiles <- list.files("Data/mo_bi_pnr", pattern = "*.tif$", full.names = TRUE)  # Adjust path
 
-# Save combined version
-save(pnr_combined_df, file = "pnr_all_combined.RData")
+# Process all tiles
+for (tile_path in projected_tiles) {
+  process_and_save_tile(tile_path)
+}
 
+#### This doesn't work
+#### Too many values that hit integer overflow, exceeds R's memory limits
+#### Gonna keep it in seperate tiles and .RData
+# Combine all converted pnr binary mollweide 30m dataframe into one
+# # Use base R approach with error checking
+# rdata_files <- list.files("processed_pnr_tiles", pattern = "*.RData$", full.names = TRUE)
+# 
+# cat("Found", length(rdata_files), "RData files\n")
+# 
+# # Load and check each file individually
+# all_pnr_dfs <- list()
+# for(i in seq_along(rdata_files)) {
+#   cat("Loading file", i, ":", basename(rdata_files[i]), "\n")
+#   
+#   tryCatch({
+#     load(rdata_files[i])  # Loads 'pnr_points'
+#     
+#     # Check if pnr_points exists and has data
+#     if(exists("pnr_points") && nrow(pnr_points) > 0) {
+#       all_pnr_dfs[[i]] <- pnr_points
+#       cat("  -> Added", nrow(pnr_points), "rows\n")
+#     } else {
+#       cat("  -> Empty or missing data, skipping\n")
+#     }
+#     
+#     rm(pnr_points)  # Clean up
+#   }, error = function(e) {
+#     cat("  -> Error loading file:", e$message, "\n")
+#   })
+# }
+# 
+# # Remove NULL entries
+# all_pnr_dfs <- all_pnr_dfs[!sapply(all_pnr_dfs, is.null)]
+# 
+# cat("Successfully loaded", length(all_pnr_dfs), "dataframes\n")
+# 
+# # Combine all dataframes
+# pnr_combined_df <- do.call(rbind, all_pnr_dfs)
+# 
+# # Check result
+# cat("Total PNR cells:", nrow(pnr_combined_df), "\n")
+# head(pnr_combined_df)
 
 e_time <- Sys.time()
 total_time <- e_time - s_time
 total_time
-
-# If it works well, process all tiles
-# all_pnr_dfs <- lapply(projected_tiles, process_pnr_tile)
-# pnr_combined_df <- bind_rows(all_pnr_dfs)
