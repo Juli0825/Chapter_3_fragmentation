@@ -268,6 +268,38 @@ updated_data <- add_forest_coverage_to_global_ffi_dplyr(
     output_path
   )
 
+### Adding missing tiles
+# Read your current file
+current_data <- read.csv("global_ffi_with_coverage.csv", stringsAsFactors = FALSE)
+
+# Count current coverage
+cat("Before update - Plots with coverage:", sum(!is.na(current_data$forest_coverage_pct)), "\n")
+cat("Before update - Plots without coverage:", sum(is.na(current_data$forest_coverage_pct)), "\n")
+
+# Run the function on current data
+final_data <- add_forest_coverage_to_global_ffi_dplyr(
+  global_ffi_path,
+  coverage_data_dir,
+  output_path
+)
+
+# Check improvement
+cat("After update - Plots with coverage:", sum(!is.na(final_data$forest_coverage_pct)), "\n")
+cat("After update - Plots without coverage:", sum(is.na(final_data$forest_coverage_pct)), "\n")
+
 e<-Sys.time()
 t<- e-s
 t
+
+
+
+
+
+
+
+
+
+
+
+
+
